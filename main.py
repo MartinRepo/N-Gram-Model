@@ -62,7 +62,10 @@ def model_training(infile, outfile):
 4. Generating from models
 """
 def generate_from_LM(model_file, seed, n):
+    # list, sort, find max prob .....
     pass
+
+
 """
 5. Computing perplexity
 """
