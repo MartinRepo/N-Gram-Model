@@ -39,11 +39,11 @@ Read file -> Collect counts -> Estimate probabilities -> Write model probabiliti
 """
 
 
-def model_training(infile, outfile):
+def model_training(input_file, output_file):
     bigram_counts = defaultdict(Counter)
     trigram_counts = defaultdict(Counter)
 
-    with open(infile) as f:
+    with open(input_file) as f:
         for line in f:
             line = preprocess_line(line)
             for i in range(len(line) - 2):
@@ -52,7 +52,7 @@ def model_training(infile, outfile):
                 trigram_counts[bigram][trigram[2]] += 1
                 bigram_counts[bigram][trigram[2]] += 1
 
-    with open(outfile, 'w') as f_out:
+    with open(output_file, 'w') as f_out:
         for bigram in trigram_counts:
             total_bigram_count = sum(bigram_counts[bigram].values())
             for char, count in trigram_counts[bigram].items():
@@ -63,9 +63,7 @@ def model_training(infile, outfile):
 """
 4. Generating from models
 """
-
-
-def generate_from_LM(model_file, sequence_length=300):
+def load_language_model(model_file):
     language_model = {}
     with open(model_file) as f:
         for line in f:
@@ -76,6 +74,10 @@ def generate_from_LM(model_file, sequence_length=300):
             if history not in language_model:
                 language_model[history] = []
             language_model[history].append((next_char, probability))
+    return language_model
+
+def generate_from_LM(model_file, sequence_length=300):
+    language_model = load_language_model(model_file)
     generated_sequence = '##'
     while len(generated_sequence) < sequence_length:
         # Get the last two characters (bigram history)
@@ -99,37 +101,41 @@ def generate_from_LM(model_file, sequence_length=300):
 
 
 def compute_perplexity(test_file, model):
-    language_model = {}
-    with open(model) as f:
+    language_model = load_language_model(model)
+    total_log_prob = 0
+    total_trigrams = 0
+
+    with open(test_file, 'r') as f:
         for line in f:
-            trigram = line[:3]
-            probability = line[4:]
-            history = trigram[:2]
-            next_char = trigram[2]
-            if history not in language_model:
-                language_model[history] = []
-            language_model[history].append((next_char, probability))
+            line = preprocess_line(line)
+            line = '##' + line + '#'
 
-    with open(test_file) as f:
-        test_text = f.read()
-        test_text = preprocess_line(test_text)
+            for i in range(len(line) - 2):
+                bigram = line[i:i + 2]
+                next_char = line[i + 2]
 
-    N = len(test_text)
-    logP = 0
-    for i in range(len(test_text) - 2):
-        bigram = test_text[i:i + 2]
-        next_char = test_text[i + 2]
-        if bigram in language_model:
-            next_chars, probabilities = zip(*language_model[bigram])
-            if next_char in next_chars:
-                prob = float(probabilities[next_chars.index(next_char)])
-            else:
-                prob = 0
-        else:
-            prob = 0
-        logP += -1 * (prob and math.log2(prob))
+                if bigram in language_model:
+                    # Look up the probability of the next character given the bigram
+                    candidates = language_model[bigram]
+                    probabilities = {char: prob for char, prob in candidates}
+                    prob = float(probabilities.get(next_char, 0))
+                else:
+                    # If bigram not found, assume a small probability (smoothing)
+                    prob = 1e-6
 
-    perplexity = 2 ** (logP / N)
+                if prob > 0:
+                    total_log_prob += math.log2(prob)
+                else:
+                    total_log_prob += math.log2(1e-6)  # Handle unseen trigrams
+
+                total_trigrams += 1
+
+    # Perplexity formula
+    if total_trigrams == 0:
+        return float('inf')  # Prevent division by zero if no trigrams are found
+    avg_log_prob = total_log_prob / total_trigrams
+    perplexity = 2 ** (-avg_log_prob)
+
     return perplexity
 
 
@@ -139,11 +145,11 @@ def compute_perplexity(test_file, model):
 |======================================================|
 """
 # Test model_training()
-# model_training("assignment1-data/training.en", "assignment1-data/output_model.en")
+model_training("assignment1-data/training.en", "assignment1-data/output_model.en")
 
 # Test generate_from_LM()
-# print(generate_from_LM("assignment1-data/model-br.en", 300))
-# print(generate_from_LM("output.en", 300))
+print(generate_from_LM("assignment1-data/model-br.en", 300))
+print(generate_from_LM("output.en", 300))
 
 # Test compute_perplexity()
 print(compute_perplexity("assignment1-data/test", "assignment1-data/model-br.en"))
