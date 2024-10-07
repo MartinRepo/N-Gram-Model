@@ -38,6 +38,53 @@ Basic Workflow:
 Read file -> Collect counts -> Estimate probabilities -> Write model probabilities to result.file
 """
 
+# Add unseen data
+
+def good_turing_smoothing(trigram_counts, bigram_counts):
+    """
+    Apply Good-Turing smoothing to adjust trigram counts.
+    Args:
+        trigram_counts (dict): Trigram counts dictionary.
+        bigram_counts (dict): Bigram counts dictionary.
+    Returns:
+        dict: Adjusted trigram probabilities using Good-Turing smoothing.
+    """
+    # Step 1: Count frequencies of frequencies (N_k)
+    freq_of_freqs = Counter()
+    for bigram in trigram_counts:
+        for count in trigram_counts[bigram].values():
+            freq_of_freqs[count] += 1
+
+    # Step 2: Compute adjusted counts using Good-Turing formula
+    adjusted_trigram_probs = defaultdict(dict)
+
+    max_k = max(freq_of_freqs.keys())
+
+    for bigram in trigram_counts:
+        total_bigram_count = sum(bigram_counts[bigram].values())  # Total count of the bigram
+
+        for char, count in trigram_counts[bigram].items():
+            # If the count is large, no smoothing (use the original count)
+            if count > max_k or count not in freq_of_freqs or count + 1 not in freq_of_freqs:
+                prob = count / total_bigram_count
+            else:
+                # Good-Turing smoothing
+                adjusted_count = (count + 1) * (freq_of_freqs[count + 1] / freq_of_freqs[count])
+                prob = adjusted_count / total_bigram_count
+
+            adjusted_trigram_probs[bigram][char] = prob
+
+    # Step 3: Handle unseen trigrams (those with count 0)
+    unseen_prob = freq_of_freqs[1] / sum(freq_of_freqs.values())
+
+    for bigram in bigram_counts:
+        total_bigram_count = sum(bigram_counts[bigram].values())
+
+        for char in bigram_counts[bigram]:
+            if char not in trigram_counts[bigram]:
+                adjusted_trigram_probs[bigram][char] = unseen_prob / total_bigram_count
+
+    return adjusted_trigram_probs
 
 def model_training(input_file, output_file):
     bigram_counts = defaultdict(Counter)
@@ -52,11 +99,12 @@ def model_training(input_file, output_file):
                 trigram_counts[bigram][trigram[2]] += 1
                 bigram_counts[bigram][trigram[2]] += 1
 
+    # Apply Good-Turing smoothing
+    trigram_probs = good_turing_smoothing(trigram_counts, bigram_counts)
+
     with open(output_file, 'w') as f_out:
-        for bigram in trigram_counts:
-            total_bigram_count = sum(bigram_counts[bigram].values())
-            for char, count in trigram_counts[bigram].items():
-                prob = count / total_bigram_count
+        for bigram in trigram_probs:
+            for char, prob in trigram_probs[bigram].items():
                 f_out.write(f"{bigram[0]}{bigram[1]}{char} {prob:.6f}\n")
 
 
@@ -134,8 +182,8 @@ model_training("assignment1-data/training.en", "assignment1-data/output_model.en
 
 # Test generate_from_LM()
 print(generate_from_LM("assignment1-data/model-br.en", 300))
-print(generate_from_LM("output.en", 300))
+print(generate_from_LM("assignment1-data/output_model.en", 300))
 
 # Test compute_perplexity()
 print(compute_perplexity("assignment1-data/test", "assignment1-data/model-br.en"))
-print(compute_perplexity("assignment1-data/test", "output.en"))
+print(compute_perplexity("assignment1-data/test", "assignment1-data/output_model.en"))
