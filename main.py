@@ -62,25 +62,19 @@ def model_training(infile, outfile):
 """
 4. Generating from models
 """
+
+
 def generate_from_LM(model_file, sequence_length=300):
     language_model = {}
     with open(model_file) as f:
         for line in f:
-            line = line.strip()
-            if line:
-                parts = line.split()
-                if len(parts) != 2:
-                    continue
-                trigram = parts[0].strip()
-                probability = parts[1].strip()
-                if len(trigram) != 3:
-                    continue
-                history = trigram[:2]
-                next_char = trigram[2]
-                if history not in language_model:
-                    language_model[history] = []
-                language_model[history].append((next_char, probability))
-
+            trigram = line[:3]
+            probability = line[4:]
+            history = trigram[:2]
+            next_char = trigram[2]
+            if history not in language_model:
+                language_model[history] = []
+            language_model[history].append((next_char, probability))
     generated_sequence = '##'
     while len(generated_sequence) < sequence_length:
         # Get the last two characters (bigram history)
