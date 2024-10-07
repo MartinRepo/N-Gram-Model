@@ -9,6 +9,7 @@ Date: 2024-10-05
 | Result = 3.14                                    |
 |==================================================|
 """
+import math
 import random
 import re
 import sys
@@ -56,7 +57,7 @@ def model_training(infile, outfile):
             total_bigram_count = sum(bigram_counts[bigram].values())
             for char, count in trigram_counts[bigram].items():
                 prob = count / total_bigram_count
-                f_out.write(f"{bigram[0]}{bigram[1]} -> {char}: {prob:.6f}\n")
+                f_out.write(f"{bigram[0]}{bigram[1]}{char} {prob:.6f}\n")
 
 
 """
@@ -97,19 +98,53 @@ def generate_from_LM(model_file, sequence_length=300):
 """
 
 
+def compute_perplexity(test_file, model):
+    language_model = {}
+    with open(model) as f:
+        for line in f:
+            trigram = line[:3]
+            probability = line[4:]
+            history = trigram[:2]
+            next_char = trigram[2]
+            if history not in language_model:
+                language_model[history] = []
+            language_model[history].append((next_char, probability))
+
+    with open(test_file) as f:
+        test_text = f.read()
+        test_text = preprocess_line(test_text)
+
+    N = len(test_text)
+    logP = 0
+    for i in range(len(test_text) - 2):
+        bigram = test_text[i:i + 2]
+        next_char = test_text[i + 2]
+        if bigram in language_model:
+            next_chars, probabilities = zip(*language_model[bigram])
+            if next_char in next_chars:
+                prob = float(probabilities[next_chars.index(next_char)])
+            else:
+                prob = 0
+        else:
+            prob = 0
+        logP += -1 * (prob and math.log2(prob))
+
+    perplexity = 2 ** (logP / N)
+    return perplexity
+
+
 """
 |====================MAIN SCRIPT=======================|
 | Usage: python main.py <training_file> <output_file>  |
 |======================================================|
 """
 # Test model_training()
-# if len(sys.argv) != 3:
-#     print("Usage: ", sys.argv[0], "<training_file> <output_file>")
-#     sys.exit(1)
-#
-# infile = sys.argv[1]
-# outfile = sys.argv[2]
-# model_training(infile, outfile)
+# model_training("assignment1-data/training.en", "assignment1-data/output_model.en")
 
 # Test generate_from_LM()
-print(generate_from_LM("assignment1-data/model-br.en", 300))
+# print(generate_from_LM("assignment1-data/model-br.en", 300))
+# print(generate_from_LM("output.en", 300))
+
+# Test compute_perplexity()
+print(compute_perplexity("assignment1-data/test", "assignment1-data/model-br.en"))
+print(compute_perplexity("assignment1-data/test", "output.en"))
