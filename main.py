@@ -41,14 +41,6 @@ Read file -> Collect counts -> Estimate probabilities -> Write model probabiliti
 # Add unseen data
 
 def good_turing_smoothing(trigram_counts, bigram_counts):
-    """
-    Apply Good-Turing smoothing to adjust trigram counts.
-    Args:
-        trigram_counts (dict): Trigram counts dictionary.
-        bigram_counts (dict): Bigram counts dictionary.
-    Returns:
-        dict: Adjusted trigram probabilities using Good-Turing smoothing.
-    """
     # Step 1: Count frequencies of frequencies (N_k)
     freq_of_freqs = Counter()
     for bigram in trigram_counts:
@@ -65,7 +57,7 @@ def good_turing_smoothing(trigram_counts, bigram_counts):
 
         for char, count in trigram_counts[bigram].items():
             # If the count is large, no smoothing (use the original count)
-            if count > max_k or count not in freq_of_freqs or count + 1 not in freq_of_freqs:
+            if count > max_k and (count not in freq_of_freqs or count + 1 not in freq_of_freqs):
                 prob = count / total_bigram_count
             else:
                 # Good-Turing smoothing
@@ -142,6 +134,7 @@ def generate_from_LM(model_file, sequence_length=300):
             break
 
     return generated_sequence
+
 
 """
 5. Computing perplexity
