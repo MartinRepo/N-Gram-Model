@@ -56,13 +56,8 @@ def good_turing_smoothing(trigram_counts, bigram_counts):
         total_bigram_count = sum(bigram_counts[bigram].values())  # Total count of the bigram
 
         for char, count in trigram_counts[bigram].items():
-            # If the count is large, no smoothing (use the original count)
-            if count > max_k and (count not in freq_of_freqs or count + 1 not in freq_of_freqs):
-                prob = count / total_bigram_count
-            else:
-                # Good-Turing smoothing
-                adjusted_count = (count + 1) * (freq_of_freqs[count + 1] / freq_of_freqs[count])
-                prob = adjusted_count / total_bigram_count
+            adjusted_count = (count + 1) * (freq_of_freqs[count + 1] / freq_of_freqs[count])
+            prob = adjusted_count / total_bigram_count
 
             adjusted_trigram_probs[bigram][char] = prob
 
