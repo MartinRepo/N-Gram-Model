@@ -58,6 +58,39 @@ def add_alpha_smoothing(trigram_counts, bigram_counts, alpha=0.01):
             trigram_probs[bigram][char] = (count + alpha) / (total + alpha * len(bigram_counts[bigram]))
     return trigram_probs
 
+# def good_turing_smoothing(trigram_counts, bigram_counts):
+#     # Step 1: Count frequencies of frequencies (N_k)
+#     freq_of_freqs = Counter()
+#     for bigram in trigram_counts:
+#         for count in trigram_counts[bigram].values():
+#             freq_of_freqs[count] += 1
+
+#     # Step 2: Compute adjusted counts using Good-Turing formula
+#     adjusted_trigram_probs = defaultdict(dict)
+
+#     for bigram in trigram_counts:
+#         total_bigram_count = sum(bigram_counts[bigram].values())  # Total count of the bigram
+
+#         for char, count in trigram_counts[bigram].items():
+#             adjusted_count = (count + 1) * (freq_of_freqs[count + 1] / freq_of_freqs[count])
+#             prob = adjusted_count / total_bigram_count
+
+#             adjusted_trigram_probs[bigram][char] = prob
+
+#     # Step 3: Handle unseen trigrams (those with count 0)
+#     unseen_prob = freq_of_freqs[1] / sum(freq_of_freqs.values())
+
+#     for bigram in bigram_counts:
+#         total_bigram_count = sum(bigram_counts[bigram].values())
+
+#         for char in bigram_counts[bigram]:
+#             if char not in trigram_counts[bigram]:
+#                 adjusted_trigram_probs[bigram][char] = unseen_prob / total_bigram_count
+
+#     return adjusted_trigram_probs
+
+
+
 def good_turing_smoothing(trigram_counts, bigram_counts):
     # Step 1: Count frequencies of frequencies (N_k)
     freq_of_freqs = Counter()
@@ -71,52 +104,83 @@ def good_turing_smoothing(trigram_counts, bigram_counts):
     for bigram in trigram_counts:
         total_bigram_count = sum(bigram_counts[bigram].values())  # Total count of the bigram
 
-        for char, count in trigram_counts[bigram].items():
-            adjusted_count = (count + 1) * (freq_of_freqs[count + 1] / freq_of_freqs[count])
-            prob = adjusted_count / total_bigram_count
+        if total_bigram_count == 0:
+            continue  # Skip if no counts for this bigram
 
-            adjusted_trigram_probs[bigram][char] = prob
+        for char, count in trigram_counts[bigram].items():
+            # Handle cases where count + 1 exceeds the available frequency counts
+            adjusted_count = (count + 1) * (freq_of_freqs[count + 1] / freq_of_freqs[count]) if freq_of_freqs[count] > 0 else 0
+            
+            adjusted_trigram_probs[bigram][char] = adjusted_count
 
     # Step 3: Handle unseen trigrams (those with count 0)
-    unseen_prob = freq_of_freqs[1] / sum(freq_of_freqs.values())
+    unseen_prob = freq_of_freqs[1] / sum(freq_of_freqs.values()) 
 
     for bigram in bigram_counts:
         total_bigram_count = sum(bigram_counts[bigram].values())
 
+        if total_bigram_count == 0:
+            continue  # Skip if no counts for this bigram
+
         for char in bigram_counts[bigram]:
-            if char not in trigram_counts[bigram]:
+            if char not in adjusted_trigram_probs[bigram]:
                 adjusted_trigram_probs[bigram][char] = unseen_prob / total_bigram_count
+
+    # Normalize the probabilities for each bigram
+    for bigram in adjusted_trigram_probs:
+        total_prob = sum(adjusted_trigram_probs[bigram].values())
+        
+        if total_prob > 0:  # Ensure the total is not zero before normalization
+            for char in adjusted_trigram_probs[bigram]:
+                adjusted_trigram_probs[bigram][char] /= total_prob
 
     return adjusted_trigram_probs
 
 
-def model_training(input_file, output_file):
+def model_training(input_file, output_file, smoothingType, alpha=0):
     bigram_counts = defaultdict(Counter)
     trigram_counts = defaultdict(Counter)
     charset = list(string.ascii_lowercase) + ['.', '0', '#', ' ']
-    all_trigrams = sorted([''.join(trigram) for trigram in itertools.product(charset, repeat=3) if
-                           not (trigram[0] == '#' and trigram[2] == '#') and not (
-                                   trigram[1] == '#' and not (trigram[0] == '#' and trigram[1] == '#'))])
+    
+    # Generate all possible trigrams, sorted
+    all_trigrams = sorted([''.join(trigram) for trigram in itertools.product(charset, repeat=3)
+                           if not (trigram[0] == '#' and trigram[2] == '#') and not (trigram[1] == '#' and not (trigram[0] == '#' and trigram[1] == '#'))])
 
+    # Read input file and populate bigram_counts and trigram_counts
     with open(input_file) as f:
         for line in f:
-            line = preprocess_line(line)
+            line = preprocess_line(line)  # You need to define preprocess_line function
             for i in range(len(line) - 2):
                 bigram = (line[i], line[i + 1])
                 trigram = (line[i], line[i + 1], line[i + 2])
                 trigram_counts[bigram][trigram[2]] += 1
                 bigram_counts[bigram][trigram[2]] += 1
 
-    # trigram_probs = simple_probability_estimation(trigram_counts)  # pp = 7.089956
-    # trigram_probs = add_alpha_smoothing(trigram_counts, bigram_counts, alpha=0.017)  # pp = 7.087658
-    trigram_probs = good_turing_smoothing(trigram_counts, bigram_counts)  # pp = 5.890559
-
+    # Choose smoothing method based on smoothingType
+    if smoothingType == "simple":
+        trigram_probs = simple_probability_estimation(trigram_counts)
+    
+    elif smoothingType == "alpha":
+        if alpha <= 0:
+            print("Alpha parameter is required and must be greater than 0 for alpha smoothing.")
+            return
+        trigram_probs = add_alpha_smoothing(trigram_counts, bigram_counts, alpha)
+    
+    elif smoothingType == "goodTuring":
+        trigram_probs = good_turing_smoothing(trigram_counts, bigram_counts)
+    
+    else:
+        print("Not a valid smoothing method")
+        return
+    
+    # Write trigram probabilities to output file
     with open(output_file, 'w') as f_out:
         for trigram in all_trigrams:
             bigram = (trigram[0], trigram[1])
             char = trigram[2]
             prob = trigram_probs.get(bigram, {}).get(char, 0.0)
             f_out.write(f"{trigram} {prob:.6f}\n")
+
 
 
 """
@@ -193,7 +257,7 @@ def compute_perplexity(test_file, model):
 |======================================================|
 """
 # Test model_training()
-model_training("assignment1-data/training.en", "assignment1-data/output_model.en")
+model_training("assignment1-data/training.en", "assignment1-data/output_model.en", "goodTuring" )
 
 # Test generate_from_LM()
 print(generate_from_LM("assignment1-data/model-br.en", 300))
