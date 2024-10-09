@@ -9,9 +9,11 @@ Date: 2024-10-05
 | Result = 3.14                                    |
 |==================================================|
 """
+import itertools
 import math
 import random
 import re
+import string
 import sys
 from collections import defaultdict, Counter
 
@@ -38,7 +40,23 @@ Basic Workflow:
 Read file -> Collect counts -> Estimate probabilities -> Write model probabilities to result.file
 """
 
-# Add unseen data
+
+def simple_probability_estimation(trigram_counts):
+    trigram_probs = defaultdict(dict)
+    for bigram, counts in trigram_counts.items():
+        total = sum(counts.values())
+        for char, count in counts.items():
+            trigram_probs[bigram][char] = count / total
+    return trigram_probs
+
+
+def add_alpha_smoothing(trigram_counts, bigram_counts, alpha=0.01):
+    trigram_probs = defaultdict(dict)
+    for bigram, counts in trigram_counts.items():
+        total = sum(counts.values())
+        for char, count in counts.items():
+            trigram_probs[bigram][char] = (count + alpha) / (total + alpha * len(bigram_counts[bigram]))
+    return trigram_probs
 
 def good_turing_smoothing(trigram_counts, bigram_counts):
     # Step 1: Count frequencies of frequencies (N_k)
@@ -49,8 +67,6 @@ def good_turing_smoothing(trigram_counts, bigram_counts):
 
     # Step 2: Compute adjusted counts using Good-Turing formula
     adjusted_trigram_probs = defaultdict(dict)
-
-    max_k = max(freq_of_freqs.keys())
 
     for bigram in trigram_counts:
         total_bigram_count = sum(bigram_counts[bigram].values())  # Total count of the bigram
@@ -73,9 +89,14 @@ def good_turing_smoothing(trigram_counts, bigram_counts):
 
     return adjusted_trigram_probs
 
+
 def model_training(input_file, output_file):
     bigram_counts = defaultdict(Counter)
     trigram_counts = defaultdict(Counter)
+    charset = list(string.ascii_lowercase) + ['.', '0', '#', ' ']
+    all_trigrams = sorted([''.join(trigram) for trigram in itertools.product(charset, repeat=3) if
+                           not (trigram[0] == '#' and trigram[2] == '#') and not (
+                                   trigram[1] == '#' and not (trigram[0] == '#' and trigram[1] == '#'))])
 
     with open(input_file) as f:
         for line in f:
@@ -86,18 +107,23 @@ def model_training(input_file, output_file):
                 trigram_counts[bigram][trigram[2]] += 1
                 bigram_counts[bigram][trigram[2]] += 1
 
-    # Apply Good-Turing smoothing
-    trigram_probs = good_turing_smoothing(trigram_counts, bigram_counts)
+    # trigram_probs = simple_probability_estimation(trigram_counts)  # pp = 7.089956
+    # trigram_probs = add_alpha_smoothing(trigram_counts, bigram_counts, alpha=0.017)  # pp = 7.087658
+    trigram_probs = good_turing_smoothing(trigram_counts, bigram_counts)  # pp = 5.890559
 
     with open(output_file, 'w') as f_out:
-        for bigram in trigram_probs:
-            for char, prob in trigram_probs[bigram].items():
-                f_out.write(f"{bigram[0]}{bigram[1]}{char} {prob:.6f}\n")
+        for trigram in all_trigrams:
+            bigram = (trigram[0], trigram[1])
+            char = trigram[2]
+            prob = trigram_probs.get(bigram, {}).get(char, 0.0)
+            f_out.write(f"{trigram} {prob:.6f}\n")
 
 
 """
 4. Generating from models
 """
+
+
 def load_language_model(model_file):
     language_model = {}
     with open(model_file) as f:
@@ -110,6 +136,7 @@ def load_language_model(model_file):
                 language_model[history] = []
             language_model[history].append((next_char, probability))
     return language_model
+
 
 def generate_from_LM(model_file, sequence_length=300):
     language_model = load_language_model(model_file)
