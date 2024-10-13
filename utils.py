@@ -54,13 +54,13 @@ def compute_perplexity(test_file, model):
     N = len(test_text)
     logP = 0
     prob = 0
-    for i in range(len(test_text) - 2):
+    for i in range(N - 2):
         bigram = test_text[i:i + 2]
         next_char = test_text[i + 2]
         if bigram in language_model:
             next_chars, probabilities = zip(*language_model[bigram])
             if next_char in next_chars:
                 prob = float(probabilities[next_chars.index(next_char)])
-        logP += -1 * (prob and math.log2(prob))
+        logP += -1 * math.log2(prob)
     perplexity = 2 ** (logP / N)
     return perplexity
