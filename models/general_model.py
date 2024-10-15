@@ -1,8 +1,9 @@
 import itertools
 import string
 from collections import defaultdict, Counter
-from smoothing import simple_probability_estimation, add_alpha_smoothing, good_turing_smoothing, back_off_smoothing, kneser_ney_smoothing, interpolation_smoothing
+from smoothing_methods import simple_probability_estimation, add_alpha_smoothing, good_turing_smoothing, back_off_smoothing, interpolation_smoothing
 from utils import preprocess_line
+
 
 def model_training(input_file, output_file, smoothingType, alpha=0):
     unigram_counts = Counter()
@@ -38,17 +39,14 @@ def model_training(input_file, output_file, smoothingType, alpha=0):
     if smoothingType == "simple":
         trigram_probs = simple_probability_estimation(trigram_counts)
 
-    elif smoothingType == "alpha":
+    elif smoothingType == "add-alpha":
         trigram_probs = add_alpha_smoothing(trigram_counts, bigram_counts, alpha)
 
-    elif smoothingType == "goodTuring":
+    elif smoothingType == "good-turing":
         trigram_probs = good_turing_smoothing(trigram_counts, bigram_counts)
 
     elif smoothingType == "backoff":
         trigram_probs = back_off_smoothing(trigram_counts, bigram_counts, unigram_counts)
-
-    elif smoothingType == "kn":
-        trigram_probs = kneser_ney_smoothing(trigram_counts, bigram_counts)
 
     elif smoothingType == "interpolation":
         trigram_probs = interpolation_smoothing(trigram_counts, bigram_counts, unigram_counts)
