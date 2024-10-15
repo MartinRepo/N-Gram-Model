@@ -9,7 +9,7 @@ def simple_probability_estimation(trigram_counts):
     return trigram_probs
 
 
-def add_alpha_smoothing(trigram_counts, bigram_counts, alpha=0.01):
+def add_alpha_smoothing(trigram_counts, bigram_counts, alpha=0.043):
     trigram_probs = defaultdict(dict)
     for bigram, counts in trigram_counts.items():
         total = sum(counts.values())
@@ -63,6 +63,7 @@ def interpolation_smoothing(trigram_counts, bigram_counts, unigram_counts, lambd
         trigram_probs[bigram] = {}
         bigram_count = sum(bigram_counts[bigram].values())
         for char, trigram_count in following_chars.items():
+            # Calculate the probability of the trigram using interpolation smoothing, lambda1 + lambda2 + lambda3 = 1
             unigram_count = unigram_counts[char]
             if trigram_count > 0:
                 trigram_probs[bigram][char] = lambda1*(trigram_count / bigram_count) + lambda2*(bigram_count / unigram_count) + lambda3*(unigram_count / total_unigrams)
@@ -88,6 +89,7 @@ def back_off_smoothing(trigram_counts, bigram_counts, unigram_counts):
         trigram_probs[bigram] = {}
         bigram_count = sum(bigram_counts[bigram].values())
         for char, trigram_count in following_chars.items():
+            # Calculate the probability of the trigram using back-off smoothing
             unigram_count = unigram_counts[char]
             if trigram_count > 0:
                 prob = trigram_count / bigram_count
@@ -98,6 +100,7 @@ def back_off_smoothing(trigram_counts, bigram_counts, unigram_counts):
 
             trigram_probs[bigram][char] = prob
 
+    # Normalize the probabilities for each bigram
     for bigram in trigram_probs:
         total_prob = sum(trigram_probs[bigram].values())
         if total_prob > 0:

@@ -20,11 +20,14 @@ def model_training_with_add_alpha(input_file, output_file):
     all_trigrams = sorted([''.join(trigram) for trigram in itertools.product(charset, repeat=3)
                            if not (trigram[0] == '#' and trigram[2] == '#') and not (
                     trigram[1] == '#' and not (trigram[0] == '#' and trigram[1] == '#'))])
+
+    # Initialize bigram_counts and trigram_counts
     for trigram in all_trigrams:
         bigram = (trigram[0], trigram[1])
         trigram_counts[bigram][trigram[2]] = 0
         bigram_counts[bigram][trigram[2]] = 0
 
+    # Populate bigram_counts and trigram_counts
     for line in train_set:
         line = preprocess_line(line)
         for i in range(len(line) - 2):
@@ -33,6 +36,7 @@ def model_training_with_add_alpha(input_file, output_file):
             trigram_counts[bigram][trigram[2]] += 1
             bigram_counts[bigram][trigram[2]] += 1
 
+    # Generate alpha values for grid search optimal alpha
     alpha_values = [round(a * 0.001, 3) for a in range(1, 1001)]
     perplexity_set = []
     best_alpha = None
@@ -48,6 +52,8 @@ def model_training_with_add_alpha(input_file, output_file):
             best_perplexity = perplexity
             best_alpha = alpha
             best_trigram_probs = trigram_probs
+
+    # Plot the perplexities within different alpha values
     plt.plot(alpha_values, perplexity_set)
     plt.title("Perplexities within different alpha values")
     plt.xlabel("Alpha")
@@ -59,6 +65,6 @@ def model_training_with_add_alpha(input_file, output_file):
                  arrowprops=dict(facecolor='black', shrink=0.05))
 
     plt.show()
+
     print(f"Best alpha: {best_alpha}, Best Perplexity: {best_perplexity}")
-    # Write the best model to output file
     write_model_to_file(all_trigrams, best_trigram_probs, output_file)

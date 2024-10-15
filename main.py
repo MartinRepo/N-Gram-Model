@@ -9,7 +9,7 @@ Date: 2024-10-05
 | Result = 3.14                                    |
 |==================================================|
 """
-from utils import generate_from_LM, compute_perplexity
+from utils import generate_from_LM, compute_perplexity, plot_distribution
 from models.general_model import model_training
 from models.add_alpha import model_training_with_add_alpha
 from models.interpolation import model_training_with_interpolation
@@ -20,25 +20,31 @@ from models.interpolation import model_training_with_interpolation
 |======================================================|
 """
 # For searching best alpha
-# model_training_with_add_alpha("assignment1-data/training.en", "assignment1-data/model-add-alpha.en")
+# model_training_with_add_alpha("assignment1-data/training.en", "model-file/model-add-alpha.en")
 
 # For searching best lambdas
-# model_training_with_interpolation("assignment1-data/training.en", "assignment1-data/model-interpolation.en")
+# model_training_with_interpolation("assignment1-data/training.en", "model-file/model-interpolation.en")
 
 # Test general model_training(), with different smoothing methods
-model_training("assignment1-data/training.en", "assignment1-data/output_model_smoothing.en", "add-alpha", 0.151)
+model_training("assignment1-data/training.en", "model-file/model.en", "add-alpha", 0.043)
 
 # Draw probability distribution of trigrams with history "ng"
-# plot_distribution("assignment1-data/output_model_smoothing.en", "ng")
+# plot_distribution("model-file/model.en", "ng")
 
 # Test generate_from_LM()
-print(generate_from_LM("assignment1-data/model-br.en", 300))
-print(generate_from_LM("assignment1-data/output_model_smoothing.en", 300))
+# print("=======================\noutput from model-br.en\n=======================")
+# model_br_outputs = generate_from_LM("assignment1-data/model-br.en", 300)
+# for output in model_br_outputs:
+#     print(output)
+# print("=======================\n output from model-general.en\n=======================")
+# model_add_alpha_outputs = generate_from_LM("model-file/model.en", 300)
+# for output in model_add_alpha_outputs:
+#     print(output)
 
 
 # Running on test_set
-print(compute_perplexity("temp/test_set.out", "assignment1-data/output_model_smoothing.en"))
+# print(compute_perplexity("temp/test_set.out", "model-file/model.en"))
 
 # Test compute_perplexity()
 print(compute_perplexity("assignment1-data/test", "assignment1-data/model-br.en"))
-print(compute_perplexity("assignment1-data/test", "assignment1-data/output_model_smoothing.en"))
+print(compute_perplexity("assignment1-data/test", "model-file/model.en"))

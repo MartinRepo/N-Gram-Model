@@ -39,6 +39,7 @@ def model_training_with_interpolation(input_file, output_file):
             trigram_counts[bigram][trigram[2]] += 1
             bigram_counts[bigram][trigram[2]] += 1
 
+    # Generate lambda values for grid search optimal lambda
     lambda_combinations = []
     for lambda_1 in [round(x, 4) for x in frange(0.9701, 1, 0.0001)]:
         remaining_sum = 1 - lambda_1
@@ -47,7 +48,7 @@ def model_training_with_interpolation(input_file, output_file):
             if lambda_2 > lambda_3 > 0:
                 lambda_combinations.append((lambda_1, lambda_2, lambda_3))
 
-
+    # Grid search for optimal lambda values
     perplexity_set = []
     best_lambdas = None
     best_perplexity = float('inf')
@@ -66,11 +67,15 @@ def model_training_with_interpolation(input_file, output_file):
     print(f"Best lambdas: {best_lambdas}, Best Perplexity: {best_perplexity}")
     # Write the best model to output file
     write_model_to_file(all_trigrams, best_trigram_probs, output_file)
+
+    # Write lambda values and perplexity to csv file, for plotting
     with open("temp/lambda_perplexity.csv", 'w') as f:
         f.write("lambda_1,lambda_2,lambda_3,perplexity\n")
         for (l1, l2, l3), p in zip(lambda_combinations, perplexity_set):
             f.write(f"{l1},{l2},{l3},{p}\n")
     data = pd.read_csv("temp/lambda_perplexity.csv")
+
+    # Plot lambda values vs perplexity
     fig, axs = plt.subplots(3, 1, figsize=(10, 15))
 
     # Lambda 1 vs Perplexity

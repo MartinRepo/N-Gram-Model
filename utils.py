@@ -1,8 +1,8 @@
 import re
-import random
 import math
 import matplotlib.pyplot as plt
 import random
+from collections import defaultdict
 
 
 def preprocess_line(text):
@@ -14,6 +14,7 @@ def preprocess_line(text):
 
 
 def split_corpus(input_file, train_ratio=0.8, dev_ratio=0.1, seed=42):
+    # Helper function to split the corpus into training, development, and test sets
     with open(input_file, 'r') as f:
         lines = f.readlines()
     random.seed(seed)
@@ -31,6 +32,7 @@ def split_corpus(input_file, train_ratio=0.8, dev_ratio=0.1, seed=42):
 
 
 def write_model_to_file(all_trigrams, trigram_probs, output_file):
+    # Helper function to write the model details to the output file
     with open(output_file, 'w') as f_out:
         for trigram in all_trigrams:
             bigram = (trigram[0], trigram[1])
@@ -40,6 +42,7 @@ def write_model_to_file(all_trigrams, trigram_probs, output_file):
 
 
 def load_language_model(model_file):
+    # Helper function to load the language model from the model file
     language_model = {}
     with open(model_file) as f:
         for line in f:
@@ -53,51 +56,56 @@ def load_language_model(model_file):
     return language_model
 
 
-def generate_from_LM(model_file, sequence_length=300):
+def generate_from_LM(model_file, sequence_length=300, iterations=20):
     language_model = load_language_model(model_file)
-    generated_sequence = '##'
-    while len(generated_sequence) < sequence_length:
-        bigram = generated_sequence[-2:]
+    generated_sequences = []
+    for i in range(iterations):
+        generated_sequence = '##'
+        while len(generated_sequence) < sequence_length:
+            bigram = generated_sequence[-2:]
 
-        if bigram in language_model:
-            next_chars, probabilities = zip(*language_model[bigram])
-            probabilities = [float(p) for p in probabilities]
-            next_char = random.choices(next_chars, probabilities)[0]
-            generated_sequence += next_char
-        else:
-            break
+            if bigram in language_model:
+                next_chars, probabilities = zip(*language_model[bigram])
+                probabilities = [float(p) for p in probabilities]
+                next_char = random.choices(next_chars, probabilities)[0]
+                generated_sequence += next_char
+            else:
+                break
+        generated_sequences.append(generated_sequence)
 
-    return generated_sequence
+    return generated_sequences
 
 
 def compute_perplexity(test_file, model):
     language_model = load_language_model(model)
-
-    with open(test_file) as f:
-        test_text = f.read()
-        test_text = preprocess_line(test_text)
-    N = len(test_text)
+    text_length = 0
     logP = 0
-    prob = 0
-    for i in range(N - 2):
-        bigram = test_text[i:i + 2]
-        next_char = test_text[i + 2]
-        if bigram in language_model:
-            next_chars, probabilities = zip(*language_model[bigram])
-            if next_char in next_chars:
-                prob = float(probabilities[next_chars.index(next_char)])
-        logP += -1 * math.log2(prob)
-    perplexity = 2 ** (logP / N)
+    with open(test_file) as f:
+        for test_text in f:
+            test_text = preprocess_line(test_text)
+            N = len(test_text)
+            text_length += N - 2
+            prob = 0
+            for i in range(N - 2):
+                bigram = test_text[i:i + 2]
+                next_char = test_text[i + 2]
+                if bigram in language_model:
+                    next_chars, probabilities = zip(*language_model[bigram])
+                    prob = float(probabilities[next_chars.index(next_char)])
+                logP += -1 * math.log2(prob)
+    perplexity = 2 ** (logP / text_length)
     return perplexity
 
 
 def frange(start, stop, step):
+    # Helper function to generate float range
     while start < stop:
         yield start
         start += step
 
 
 def plot_distribution(model_file, bigram_history):
+    # Helper function to plot the distribution of trigrams starting with a given bigram
     language_model = load_language_model(model_file)
     if bigram_history in language_model:
         next_chars, probabilities = zip(*language_model[bigram_history])
