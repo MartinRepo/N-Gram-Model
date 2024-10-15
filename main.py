@@ -35,6 +35,10 @@ model_training("assignment1-data/training.en", "assignment1-data/output_model_sm
 print(generate_from_LM("assignment1-data/model-br.en", 300))
 print(generate_from_LM("assignment1-data/output_model_smoothing.en", 300))
 
+
+# Running on test_set
+print(compute_perplexity("temp/test_set.out", "assignment1-data/output_model_smoothing.en"))
+
 # Test compute_perplexity()
 print(compute_perplexity("assignment1-data/test", "assignment1-data/model-br.en"))
 print(compute_perplexity("assignment1-data/test", "assignment1-data/output_model_smoothing.en"))

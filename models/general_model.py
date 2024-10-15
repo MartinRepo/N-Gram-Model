@@ -2,10 +2,15 @@ import itertools
 import string
 from collections import defaultdict, Counter
 from smoothing_methods import simple_probability_estimation, add_alpha_smoothing, good_turing_smoothing, back_off_smoothing, interpolation_smoothing
-from utils import preprocess_line
+from utils import preprocess_line, split_corpus
 
 
 def model_training(input_file, output_file, smoothingType, alpha=0):
+    train_set, dev_set, test_set = split_corpus(input_file)
+    with open("temp/test_set.out", 'w') as f:
+        for line in dev_set:
+            f.write(line)
+
     unigram_counts = Counter()
     bigram_counts = defaultdict(Counter)
     trigram_counts = defaultdict(Counter)
@@ -24,16 +29,15 @@ def model_training(input_file, output_file, smoothingType, alpha=0):
         trigram_counts[bigram][trigram[2]] = 0
         bigram_counts[bigram][trigram[2]] = 0
 
-    # Read input file and populate bigram_counts and trigram_counts
-    with open(input_file) as f:
-        for line in f:
-            line = preprocess_line(line)  # You need to define preprocess_line function
-            for i in range(len(line) - 2):
-                unigram_counts[line[i]] += 1
-                bigram = (line[i], line[i + 1])
-                trigram = (line[i], line[i + 1], line[i + 2])
-                trigram_counts[bigram][trigram[2]] += 1
-                bigram_counts[bigram][trigram[2]] += 1
+    # Read train_set and populate bigram_counts and trigram_counts
+    for line in train_set:
+        line = preprocess_line(line)  # You need to define preprocess_line function
+        for i in range(len(line) - 2):
+            unigram_counts[line[i]] += 1
+            bigram = (line[i], line[i + 1])
+            trigram = (line[i], line[i + 1], line[i + 2])
+            trigram_counts[bigram][trigram[2]] += 1
+            bigram_counts[bigram][trigram[2]] += 1
 
     # Choose smoothing method based on smoothingType
     if smoothingType == "simple":
